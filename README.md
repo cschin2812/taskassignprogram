@@ -1,7 +1,7 @@
 
 ### Step A — Clone from GitHub
 
-clone from github
+Clone the repository using the provided GitHub URL.
 
 
 ### Step B — Prerequisites
@@ -20,11 +20,13 @@ Provided backup path from your machine:
 
 #### Import using SSMS
 
-1. Open SSMS and connect to: `Server=.\SQLEXPRESS`（If you are using a different SQL Server instance name, please update the connection string in appsettings.json accordingly.）
+1. Open SSMS and connect to: `Server=.\SQLEXPRESS`
+   - If you are using a different SQL Server instance name, update the connection string in `appsettings.json`.
 2. Right-click **Databases** → **Import Data-tier Application**
 3. Select file: `Task Assign.bacpac`
 4. Database name: `Task Assign`
 5. Finish the import wizard
+
 
 ### Step D — Verify connection string
 
@@ -34,13 +36,47 @@ In `taskassign/appsettings.json`, confirm:
 "DefaultConnection": "Server=.\\SQLEXPRESS;Database=Task Assign;Trusted_Connection=True;TrustServerCertificate=True;MultipleActiveResultSets=true"
 ```
 
-## Step E - Security Notice (SMTP Credentials)
+## Step E — SMTP Setup (Required for OTP & Invite Features)
 
-- Need to create a 
-- Keep SMTP settings in `taskassign/appsettings.Development.json`, which is ignored by git.
-- Never commit real SMTP usernames/passwords into `appsettings.json` or any tracked file.
-- If credentials were ever pushed to a public repo, treat them as compromised and **rotate/revoke immediately**.
-- Configure SMTP credentials through local secret storage (recommended) or `appsettings.Development.json` (gitignored).
+This system uses Gmail SMTP to send:
+
+- Password Reset OTP
+- Group Invitation links
+
+For security reasons, SMTP credentials are **not included** in the repository.
+
+To enable email features, please follow the steps below.
+
+---
+
+   ### 1️⃣ Generate a Gmail App Password
+
+   1. Go to: https://myaccount.google.com/security
+   2. Enable **2-Step Verification** (if not already enabled).
+   3. Navigate to **App passwords**.
+   4. Create a new App Password:
+      - App name: `TaskAssign`
+   5. Copy the generated 16-character password.
+
+---
+
+   ### 2️⃣ Create `appsettings.Development.json`
+
+   Inside the `taskassign` project folder, create a new file named `appsettings.Development.json` and add the following content:
+
+   ```json
+   {
+      "Smtp": {
+         "Host": "smtp.gmail.com",
+         "Port": 587,
+         "EnableSsl": true,
+         "Username": "your-email@gmail.com",
+         "Password": "your-generated-app-password",
+         "FromEmail": "your-email@gmail.com",
+         "FromName": "TaskAssign"
+      }
+   }
+   ```
 
 ### Step F — Run program
 
@@ -79,7 +115,8 @@ Open `taskassign.sln` in Visual Studio and run using `IIS Express`.
 
 ### 1.4 Create Task (`/Task/Create`)
 
-- Fill in title, description, due date, status, priority, assignee(only can assign to group member, so pls make sure member accept to join group).
+- Fill in title, description, due date, status, priority, and assignee.
+  (Assignee must be a member of the group. Ensure the member has accepted the group invitation.)
 - Save to create task under the active group.
 
 ### 1.5 Edit Task (`/Task/Edit/{id}`)
