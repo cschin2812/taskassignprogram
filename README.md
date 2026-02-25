@@ -131,10 +131,22 @@ Open `taskassign.sln` in Visual Studio and run using `IIS Express`.
 
 ### 1.7 Group Page (`/Group/Index`)
 
-- Create groups.
+- Create new groups.
 - Invite members by email.
-- View groups you can access.
-- After login, invited members can open Group page to view pending invites and **Accept/Reject** joining a group.
+- View all groups you have access to.
+
+You can click on a group row in the Group List to enter the **Group Detail** page.
+
+Inside Group Detail, you can:
+
+- View current group members
+- View pending invitations
+- Cancel pending invitations
+- Remove existing members (based on permissions)
+
+After login, invited users can:
+- Accept or reject invitations from the Group page, or
+- Use the invitation link sent via email to accept/reject.
 
 ### 1.8 Accept Invite (`/Group/AcceptInvite?token=...`)
 
