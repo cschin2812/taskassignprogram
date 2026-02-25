@@ -1,0 +1,13 @@
+@model TaskItem
+@{
+    ViewData["Title"] = "Create Task";
+    ViewData["FormAction"] = "Create";
+}
+<h2>Create Task</h2>
+<partial name="_TaskForm" model="Model" />
+
+@section Scripts {
+    <script src="~/Scripts/jquery-3.7.0.min.js"></script>
+    <script src="~/Scripts/jquery.validate.min.js"></script>
+    <script src="~/Scripts/jquery.validate.unobtrusive.min.js"></script>
+}

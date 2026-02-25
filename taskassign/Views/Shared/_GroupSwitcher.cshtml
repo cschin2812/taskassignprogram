@@ -1,0 +1,27 @@
+@using taskassign.Models
+@{
+    var groups = ViewBag.AvailableGroups as List<GroupInfo> ?? new List<GroupInfo>();
+    var activeGroupId = ViewBag.ActiveGroupId as int? ?? 0;
+}
+
+@if (User.Identity?.IsAuthenticated == true && groups.Any())
+{
+    <form asp-controller="Task" asp-action="SwitchGroup" method="post" class="d-flex align-items-center gap-2 ms-3">
+        @Html.AntiForgeryToken()
+        <input type="hidden" name="returnUrl" value="@Context.Request.Path@Context.Request.QueryString" />
+        <label class="text-light small mb-0">Group:</label>
+        <select name="groupId" class="form-select form-select-sm" onchange="this.form.submit()" style="min-width: 220px;">
+            @foreach (var group in groups)
+            {
+                if (group.Id == activeGroupId)
+                {
+                    <option value="@group.Id" selected>@group.Name</option>
+                }
+                else
+                {
+                    <option value="@group.Id">@group.Name</option>
+                }
+            }
+        </select>
+    </form>
+}

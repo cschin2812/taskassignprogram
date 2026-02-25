@@ -1,0 +1,301 @@
+@using taskassign.Models
+@model BoardViewModel
+@{
+    ViewData["Title"] = "Task Board";
+    var statuses = (taskassign.Models.TaskStatus[])Enum.GetValues(typeof(taskassign.Models.TaskStatus));
+    var leadGroupIds = ViewBag.LeadGroupIds as HashSet<int> ?? new HashSet<int>();
+    var currentUsername = User.Identity?.Name ?? string.Empty;
+}
+
+<div class="d-flex justify-content-between align-items-center mb-3">
+    <div>
+        <h2 class="mb-0">Board View</h2>
+        <small class="text-muted">Drag tasks to update status · Group: @Model.ActiveGroupName</small>
+    </div>
+    @if ((ViewBag.CanManageTasks as bool?) == true)
+    {
+        <a asp-action="Create" class="btn btn-primary">+ Create Task</a>
+    }
+</div>
+
+<div class="mb-3">
+    <a class="btn btn-sm btn-outline-primary me-2" asp-action="Index">List View</a>
+    <a class="btn btn-sm btn-outline-dark" asp-action="Board">Board View</a>
+</div>
+
+@Html.AntiForgeryToken()
+<div class="board-wrapper">
+    @foreach (var status in statuses)
+    {
+        var tasks = Model.Tasks.Where(t => t.Status == status).ToList();
+        <section class="board-column" data-status="@((int)status)">
+            <header class="board-column-header d-flex justify-content-between">
+                <h6 class="mb-0">@status</h6><span class="badge bg-secondary">@tasks.Count</span>
+            </header>
+            <div class="board-dropzone" ondragover="allowDrop(event)" ondrop="dropTask(event)">
+                @foreach (var task in tasks)
+                {
+                    var canEditStatus = leadGroupIds.Contains(task.GroupId) || string.Equals(task.AssignedTo, currentUsername, StringComparison.OrdinalIgnoreCase);
+                    var canEditNote = string.Equals(task.AssignedTo, currentUsername, StringComparison.OrdinalIgnoreCase);
+                    <article draggable="true"
+                             ondragstart="dragTask(event)"
+                             onclick="openTaskDetail(this)" ondragend="endDrag(event)"
+                             data-task-id="@task.Id"
+                             data-task-title="@task.Title"
+                             data-task-description="@task.Description"
+                             data-task-assignee="@task.AssignedTo"
+                             data-task-due="@task.DueDate.ToString("yyyy-MM-dd")"
+                             data-task-priority="@task.Priority"
+                             data-task-status="@task.Status"
+                             data-task-note="@(task.Note ?? string.Empty)"
+                             data-task-can-edit-status="@canEditStatus"
+                             data-task-can-edit-note="@canEditNote"
+                             class="task-card @((canEditStatus || canEditNote) ? string.Empty : "task-card-readonly")">
+                        <h6 class="task-title-ellipsis">@task.Title</h6>
+                        <p class="small text-muted task-description-ellipsis">@task.Description</p>
+                        <div class="small"><strong>Priority:</strong> <span class="@task.PriorityClass">@task.Priority</span></div>
+                        <div class="small"><strong>Assignee:</strong> @task.AssignedTo</div>
+                        <div class="small"><strong>Due:</strong> @task.DueDate.ToString("yyyy-MM-dd")</div>
+                    </article>
+                }
+            </div>
+        </section>
+    }
+</div>
+
+<div class="modal fade" id="taskDetailModal" tabindex="-1" aria-hidden="true">
+    <div class="modal-dialog modal-lg modal-dialog-centered">
+        <div class="modal-content">
+            <div class="modal-header">
+                <h5 class="modal-title" id="taskDetailTitle">Edit Task</h5>
+                <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
+            </div>
+            <div class="modal-body">
+                <div class="mb-2"><strong>Description:</strong> <span id="taskDetailDescription"></span></div>
+                <div class="row g-2 mb-3">
+                    <div class="col-md-3"><strong>Assignee:</strong> <span id="taskDetailAssignee"></span></div>
+                    <div class="col-md-3"><strong>Status:</strong> <span id="taskDetailStatus"></span></div>
+                    <div class="col-md-3"><strong>Priority:</strong> <span id="taskDetailPriority" class="fw-semibold"></span></div>
+                    <div class="col-md-3"><strong>Due:</strong> <span id="taskDetailDue"></span></div>
+                </div>
+                <div>
+                    <label for="taskDetailNote" class="form-label">Note</label>
+                    <textarea id="taskDetailNote" class="form-control" rows="4" placeholder="Add note / hint..."></textarea>
+                </div>
+                <input type="hidden" id="taskDetailId" value="" />
+            </div>
+            <div class="modal-footer">
+                <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Close</button>
+                <button type="button" class="btn btn-primary" id="saveTaskNoteBtn">Save Note</button>
+            </div>
+        </div>
+    </div>
+</div>
+
+<div class="modal fade" id="permissionErrorModal" tabindex="-1" aria-hidden="true">
+    <div class="modal-dialog modal-dialog-centered">
+        <div class="modal-content">
+            <div class="modal-header">
+                <h5 class="modal-title">Permission Denied</h5>
+                <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
+            </div>
+            <div class="modal-body" id="permissionErrorMessage">No permission</div>
+            <div class="modal-footer">
+                <button type="button" class="btn btn-primary" data-bs-dismiss="modal">OK</button>
+            </div>
+        </div>
+    </div>
+</div>
+
+<style>
+    .board-wrapper {
+        display: grid;
+        grid-template-columns: repeat(5, minmax(0, 1fr));
+        gap: 0.75rem;
+        align-items: stretch;
+        width: 100%;
+    }
+
+    .board-column {
+        border: 1px solid #dee2e6;
+        border-radius: 0.5rem;
+        background: #f8f9fa;
+        min-height: 78vh;
+        min-width: 0;
+        display: flex;
+        flex-direction: column;
+    }
+
+    .board-column-header {
+        padding: 0.75rem;
+        border-bottom: 1px solid #dee2e6;
+        background: #fff;
+        border-radius: 0.5rem 0.5rem 0 0;
+    }
+
+    .board-dropzone {
+        padding: 0.75rem;
+        min-height: 70vh;
+        flex: 1;
+        overflow-y: auto;
+    }
+
+    .task-card {
+
+        height: 250px;
+        overflow: hidden;
+        cursor: pointer;
+        border: 1px solid #ced4da;
+        border-radius: 0.5rem;
+        padding: 0.75rem;
+        margin-bottom: 0.75rem;
+        background: #fff;
+        user-select: none;
+        -webkit-user-select: none;
+    }
+
+    .task-title-ellipsis {
+        display: -webkit-box;
+        -webkit-line-clamp: 1;
+        -webkit-box-orient: vertical;
+        overflow: hidden;
+        text-overflow: ellipsis;
+    }
+
+    .task-description-ellipsis {
+        display: -webkit-box;
+        -webkit-line-clamp: 2;
+        -webkit-box-orient: vertical;
+        overflow: hidden;
+        text-overflow: ellipsis;
+        line-height: 1.35;
+        max-height: calc(1.35em * 2);
+        min-height: calc(1.35em * 2);
+        margin-bottom: 0.5rem;
+    }
+
+    .task-card-readonly {
+        opacity: 0.8;
+        cursor: default;
+    }
+</style>
+
+@section Scripts {
+<script>
+function dragTask(ev){
+  const canEdit = ev.currentTarget.getAttribute('data-task-can-edit-status') === 'True';
+  if (!canEdit) {
+    ev.preventDefault();
+    showPermissionModal('No permission');
+    return;
+  }
+
+  ev.currentTarget.setAttribute('data-is-dragging', 'true');
+  ev.dataTransfer.effectAllowed = 'move';
+  ev.dataTransfer.setData('taskId', ev.currentTarget.getAttribute('data-task-id'));
+}
+function endDrag(ev){
+  ev.currentTarget.removeAttribute('data-is-dragging');
+}
+function allowDrop(ev){ ev.preventDefault(); }
+
+function showPermissionModal(message){
+  const modalElement = document.getElementById('permissionErrorModal');
+  const messageContainer = document.getElementById('permissionErrorMessage');
+  if (messageContainer) {
+    messageContainer.textContent = message || 'No permission';
+  }
+
+  if (modalElement && window.bootstrap?.Modal) {
+    window.bootstrap.Modal.getOrCreateInstance(modalElement).show();
+  }
+}
+
+function openTaskDetail(card){
+  if (card.getAttribute('data-is-dragging') === 'true') {
+    return;
+  }
+
+  const modalElement = document.getElementById('taskDetailModal');
+  if (!modalElement || !window.bootstrap?.Modal) {
+    return;
+  }
+
+  document.getElementById('taskDetailId').value = card.getAttribute('data-task-id') || '';
+  document.getElementById('taskDetailTitle').textContent = card.getAttribute('data-task-title') || 'Edit Task';
+  document.getElementById('taskDetailDescription').textContent = card.getAttribute('data-task-description') || '';
+  document.getElementById('taskDetailAssignee').textContent = card.getAttribute('data-task-assignee') || '';
+  document.getElementById('taskDetailStatus').textContent = card.getAttribute('data-task-status') || '';
+  const priorityText = card.getAttribute('data-task-priority') || '';
+  const priorityElement = document.getElementById('taskDetailPriority');
+  priorityElement.textContent = priorityText;
+  priorityElement.classList.remove('text-danger', 'text-warning', 'text-primary');
+  if (priorityText === 'High') {
+    priorityElement.classList.add('text-danger');
+  } else if (priorityText === 'Medium') {
+    priorityElement.classList.add('text-warning');
+  } else {
+    priorityElement.classList.add('text-primary');
+  }
+  document.getElementById('taskDetailDue').textContent = card.getAttribute('data-task-due') || '';
+
+  const noteInput = document.getElementById('taskDetailNote');
+  const canEditNote = card.getAttribute('data-task-can-edit-note') === 'True';
+  noteInput.value = card.getAttribute('data-task-note') || '';
+  noteInput.readOnly = !canEditNote;
+
+  const saveBtn = document.getElementById('saveTaskNoteBtn');
+  saveBtn.disabled = !canEditNote;
+  saveBtn.textContent = canEditNote ? 'Save Note' : 'Read Only';
+  saveBtn.setAttribute('data-task-id', card.getAttribute('data-task-id') || '');
+
+  window.bootstrap.Modal.getOrCreateInstance(modalElement).show();
+}
+
+function dropTask(ev){
+  ev.preventDefault();
+  const taskId = ev.dataTransfer.getData('taskId');
+  const col = ev.target.closest('.board-column');
+  if(!taskId || !col) return;
+  const status = col.getAttribute('data-status');
+  const token = document.querySelector('input[name="__RequestVerificationToken"]').value;
+  fetch('@Url.Action("UpdateStatus","Task")', {
+    method: 'POST',
+    headers: {'Content-Type':'application/x-www-form-urlencoded'},
+    body: `__RequestVerificationToken=${encodeURIComponent(token)}&id=${encodeURIComponent(taskId)}&status=${encodeURIComponent(status)}`
+  }).then(r=>r.json()).then(res=>{ if(res.success){ location.reload(); } else { showPermissionModal(res.message||'Update failed'); }});
+}
+
+(() => {
+  const saveBtn = document.getElementById('saveTaskNoteBtn');
+  if (!saveBtn) {
+    return;
+  }
+
+  saveBtn.addEventListener('click', async () => {
+    const taskId = saveBtn.getAttribute('data-task-id');
+    const note = document.getElementById('taskDetailNote').value || '';
+    const token = document.querySelector('input[name="__RequestVerificationToken"]').value;
+
+    const response = await fetch('@Url.Action("UpdateNote", "Task")', {
+      method: 'POST',
+      headers: {'Content-Type': 'application/x-www-form-urlencoded'},
+      body: `__RequestVerificationToken=${encodeURIComponent(token)}&id=${encodeURIComponent(taskId || '')}&note=${encodeURIComponent(note)}`
+    });
+
+    const result = await response.json();
+    if (!result.success) {
+      showPermissionModal(result.message || 'Failed to save note');
+      return;
+    }
+
+    const card = document.querySelector(`.task-card[data-task-id="${taskId}"]`);
+    if (card) {
+      card.setAttribute('data-task-note', result.note || '');
+    }
+
+    window.bootstrap.Modal.getOrCreateInstance(document.getElementById('taskDetailModal')).hide();
+  });
+})();
+</script>
+}

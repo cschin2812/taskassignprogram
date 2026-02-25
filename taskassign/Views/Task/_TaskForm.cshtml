@@ -1,0 +1,76 @@
+@model TaskItem
+@{
+    var formAction = (ViewData["FormAction"] as string) ?? "Create";
+    var canEditTaskContent = (ViewBag.CanEditTaskContent as bool?) ?? true;
+    var canUpdateStatus = (ViewBag.CanUpdateStatus as bool?) ?? true;
+    var canUpdateNote = (ViewBag.CanUpdateNote as bool?) ?? true;
+}
+
+<form asp-action="@formAction" method="post">
+    @Html.AntiForgeryToken()
+    <input asp-for="Id" type="hidden" />
+    <input asp-for="GroupId" type="hidden" />
+    <input asp-for="CreatedBy" type="hidden" />
+    <div asp-validation-summary="ModelOnly" class="text-danger"></div>
+
+    @if (!canEditTaskContent)
+    {
+        <div class="alert alert-info py-2">
+            Limited mode: you can update Status and Note only. Other fields are leader-only.
+        </div>
+    }
+
+    @if (!canEditTaskContent)
+    {
+        <input asp-for="AssignedTo" type="hidden" />
+        <input asp-for="Priority" type="hidden" />
+    }
+
+    @if (!canUpdateStatus)
+    {
+        <input asp-for="Status" type="hidden" />
+    }
+
+    <div class="mb-3">
+        <label asp-for="Title" class="form-label"></label>
+        <input asp-for="Title" class="form-control" readonly="@(canEditTaskContent ? null : "readonly")" />
+        <span asp-validation-for="Title" class="text-danger"></span>
+    </div>
+    <div class="mb-3">
+        <label asp-for="Description" class="form-label"></label>
+        <textarea asp-for="Description" class="form-control" rows="3" readonly="@(canEditTaskContent ? null : "readonly")"></textarea>
+        <span asp-validation-for="Description" class="text-danger"></span>
+    </div>
+    <div class="mb-3">
+        <label asp-for="Note" class="form-label">Note</label>
+        <textarea asp-for="Note" class="form-control" rows="2" placeholder="Optional note" readonly="@((canEditTaskContent || canUpdateNote) ? null : "readonly")"></textarea>
+        <span asp-validation-for="Note" class="text-danger"></span>
+    </div>
+    <div class="row">
+        <div class="col-md-4 mb-3">
+            <label asp-for="AssignedTo" class="form-label"></label>
+            <select asp-for="AssignedTo" class="form-select" asp-items="@(new SelectList((IEnumerable<string>)ViewBag.Users))" disabled="@(canEditTaskContent ? null : "disabled")">
+                <option value="">-- Select assignee --</option>
+            </select>
+            <span asp-validation-for="AssignedTo" class="text-danger"></span>
+        </div>
+        <div class="col-md-4 mb-3">
+            <label asp-for="Priority" class="form-label"></label>
+            <select asp-for="Priority" class="form-select" asp-items="Html.GetEnumSelectList<taskassign.Models.TaskPriority>()" disabled="@(canEditTaskContent ? null : "disabled")"></select>
+            <span asp-validation-for="Priority" class="text-danger"></span>
+        </div>
+        <div class="col-md-4 mb-3">
+            <label asp-for="Status" class="form-label"></label>
+            <select asp-for="Status" class="form-select" asp-items="Html.GetEnumSelectList<taskassign.Models.TaskStatus>()" disabled="@(canUpdateStatus ? null : "disabled")"></select>
+            <span asp-validation-for="Status" class="text-danger"></span>
+        </div>
+    </div>
+    <div class="mb-3">
+        <label asp-for="DueDate" class="form-label"></label>
+        <input asp-for="DueDate" class="form-control" type="date" readonly="@(canEditTaskContent ? null : "readonly")" />
+        <span asp-validation-for="DueDate" class="text-danger"></span>
+    </div>
+
+    <button class="btn btn-primary" type="submit">Save</button>
+    <a asp-action="Index" class="btn btn-secondary">Cancel</a>
+</form>

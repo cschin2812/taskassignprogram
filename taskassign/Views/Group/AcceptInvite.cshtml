@@ -1,0 +1,19 @@
+@{
+    ViewData["Title"] = "Respond to Group Invite";
+}
+
+<h2>Group Invite</h2>
+
+<div class="card" style="max-width: 600px;">
+    <div class="card-body">
+        <p>You were invited to join group <strong>@ViewBag.GroupName</strong>.</p>
+        <p>Invite email: <strong>@ViewBag.InviteEmail</strong></p>
+
+        <form asp-action="AcceptInviteConfirmed" method="post" class="d-flex gap-2">
+            @Html.AntiForgeryToken()
+            <input type="hidden" name="token" value="@ViewBag.Token" />
+            <button class="btn btn-success" type="submit" name="accept" value="true">Accept</button>
+            <button class="btn btn-outline-secondary" type="submit" name="accept" value="false">Decline</button>
+        </form>
+    </div>
+</div>

@@ -1,0 +1,107 @@
+@model taskassign.Models.GroupDetailViewModel
+@{
+    ViewData["Title"] = "Group Detail";
+}
+
+<div class="d-flex justify-content-between align-items-center mb-3">
+    <div>
+        <h2 class="mb-0">@Model.GroupName</h2>
+        <small class="text-muted">Lead: @Model.LeadUsername</small>
+    </div>
+    <a asp-action="Index" class="btn btn-outline-secondary">Back to Groups</a>
+</div>
+
+@if (TempData["GroupError"] is string err)
+{
+    <div class="alert alert-danger">@err</div>
+}
+@if (TempData["GroupSuccess"] is string ok)
+{
+    <div class="alert alert-success">@ok</div>
+}
+
+<div class="row g-4">
+    <div class="col-md-7">
+        <h5>Members</h5>
+        <table class="table table-striped align-middle">
+            <thead>
+                <tr>
+                    <th>Username</th>
+                    <th>Display Name</th>
+                    <th>Email</th>
+                    <th class="text-end">Action</th>
+                </tr>
+            </thead>
+            <tbody>
+                @if (Model.Members.Any())
+                {
+                    @foreach (var member in Model.Members)
+                    {
+                        <tr>
+                            <td>@member.Username</td>
+                            <td>@member.DisplayName</td>
+                            <td>@member.Email</td>
+                            <td class="text-end">
+                                @if (Model.IsCurrentUserLead)
+                                {
+                                    <form asp-action="RemoveMember" method="post" class="d-inline">
+                                        @Html.AntiForgeryToken()
+                                        <input type="hidden" name="groupId" value="@Model.GroupId" />
+                                        <input type="hidden" name="memberId" value="@member.UserId" />
+                                        <button type="submit" class="btn btn-sm btn-outline-danger">Remove</button>
+                                    </form>
+                                }
+                            </td>
+                        </tr>
+                    }
+                }
+                else
+                {
+                    <tr><td colspan="4" class="text-center text-muted">No members yet.</td></tr>
+                }
+            </tbody>
+        </table>
+    </div>
+
+    <div class="col-md-5">
+        <h5>Pending Invites</h5>
+        <table class="table table-sm table-bordered align-middle">
+            <thead>
+                <tr>
+                    <th>User</th>
+                    <th>Email</th>
+                    <th>Expires</th>
+                    <th class="text-end">Action</th>
+                </tr>
+            </thead>
+            <tbody>
+                @if (Model.PendingInvites.Any())
+                {
+                    @foreach (var invite in Model.PendingInvites)
+                    {
+                        <tr>
+                            <td>@(string.IsNullOrWhiteSpace(invite.InvitedUsername) ? "-" : invite.InvitedUsername)</td>
+                            <td>@invite.InviteEmail</td>
+                            <td>@invite.ExpiresAt.ToLocalTime().ToString("yyyy-MM-dd HH:mm")</td>
+                            <td class="text-end">
+                                @if (Model.IsCurrentUserLead)
+                                {
+                                    <form asp-action="CancelInvite" method="post" class="d-inline">
+                                        @Html.AntiForgeryToken()
+                                        <input type="hidden" name="groupId" value="@Model.GroupId" />
+                                        <input type="hidden" name="inviteId" value="@invite.InviteId" />
+                                        <button type="submit" class="btn btn-sm btn-outline-warning">Cancel Invite</button>
+                                    </form>
+                                }
+                            </td>
+                        </tr>
+                    }
+                }
+                else
+                {
+                    <tr><td colspan="4" class="text-center text-muted">No pending invites.</td></tr>
+                }
+            </tbody>
+        </table>
+    </div>
+</div>

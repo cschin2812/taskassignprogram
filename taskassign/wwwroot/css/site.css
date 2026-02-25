@@ -1,0 +1,38 @@
+body {
+    padding-bottom: 30px;
+}
+
+.card h6 {
+    color: #6c757d;
+}
+
+.board-wrapper {
+    display: grid;
+    grid-template-columns: repeat(5, minmax(220px, 1fr));
+    gap: 12px;
+    align-items: stretch;
+}
+
+.board-column {
+    background: #f8f9fa;
+    border: 1px solid #dee2e6;
+    border-radius: 8px;
+    padding: 10px;
+    min-height: 380px;
+    display: flex;
+    flex-direction: column;
+}
+
+.board-dropzone {
+    min-height: 320px;
+    flex: 1;
+}
+
+.task-card {
+    background: #fff;
+    border: 1px solid #dee2e6;
+    border-radius: 8px;
+    padding: 10px;
+    margin-bottom: 10px;
+    cursor: grab;
+}

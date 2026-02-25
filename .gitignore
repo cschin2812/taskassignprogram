@@ -1,0 +1,50 @@
+## .NET
+bin/
+obj/
+*.user
+*.suo
+*.cache
+*.dll
+*.pdb
+*.exe
+
+## User Secrets (Windows)
+**/secrets.json
+
+## Visual Studio
+.vs/
+*.userprefs
+
+## Rider
+.idea/
+
+## Build results
+[Dd]ebug/
+[Rr]elease/
+x64/
+x86/
+[Aa][Rr][Mm]/
+[Aa][Rr][Mm]64/
+bld/
+[Bb]in/
+[Oo]bj/
+[Ll]og/
+[Ll]ogs/
+
+## NuGet
+*.nupkg
+*.snupkg
+packages/
+
+## Environment variables
+.env
+.env.local
+
+## Database
+*.mdf
+*.ldf
+*.ndf
+
+
+## Local development secrets
+taskassign/appsettings.Development.json

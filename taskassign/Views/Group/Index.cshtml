@@ -1,0 +1,343 @@
+@model taskassign.Models.GroupManagementViewModel
+@{
+    ViewData["Title"] = "Groups";
+    var inviteSuccessModalMessage = TempData["InviteSuccessModal"] as string;
+}
+
+<h2>Groups</h2>
+
+@if (TempData["GroupError"] is string err)
+{
+    <div class="alert alert-danger">@err</div>
+}
+@if (TempData["GroupSuccess"] is string ok)
+{
+    <div class="alert alert-success">@ok</div>
+}
+
+<div class="row g-4">
+    <div class="col-md-6">
+        <h5>Create Group</h5>
+        <form asp-action="Create" method="post" class="border rounded p-3">
+            @Html.AntiForgeryToken()
+            <div class="mb-2">
+                <label class="form-label">Group Name</label>
+                <input name="Name" class="form-control" />
+            </div>
+            <div class="mb-2">
+                <label class="form-label">Invite email(s) (optional)</label>
+                <div class="input-group mb-2">
+                    <input id="createInviteInput" type="text" class="form-control" placeholder="member@example.com" />
+                    <button id="createInviteAddBtn" type="button" class="btn btn-outline-secondary">+</button>
+                </div>
+                <div id="createInviteFeedback" class="form-text"></div>
+                <div id="createInvitePreview" class="small"></div>
+                <input id="createInviteEmails" name="CreateInviteEmail" type="hidden" value="" />
+            </div>
+            <button class="btn btn-primary" type="submit">Create</button>
+        </form>
+    </div>
+
+    <div class="col-md-6">
+        <h5>Invite Member</h5>
+        <form asp-action="Invite" method="post" class="border rounded p-3">
+            @Html.AntiForgeryToken()
+            <div class="mb-2">
+                <label class="form-label">Group</label>
+                <select name="InviteGroupId" class="form-select">
+                    @foreach (var g in Model.Groups.Where(x => x.IsCurrentUserLead))
+                    {
+                        if (g.Id == Model.InviteGroupId)
+                        {
+                            <option value="@g.Id" selected>@g.Name</option>
+                        }
+                        else
+                        {
+                            <option value="@g.Id">@g.Name</option>
+                        }
+                    }
+                </select>
+            </div>
+            <div class="mb-2">
+                <label class="form-label">User Email(s)</label>
+                <div class="input-group mb-2">
+                    <input id="inviteInput" type="text" class="form-control" placeholder="member@example.com" />
+                    <button id="inviteAddBtn" type="button" class="btn btn-outline-secondary">+</button>
+                </div>
+                <div id="inviteFeedback" class="form-text"></div>
+                <div id="invitePreview" class="small"></div>
+                <input id="inviteEmails" name="InviteEmail" type="hidden" value="" />
+            </div>
+            <button class="btn btn-outline-primary" type="submit">Invite</button>
+        </form>
+    </div>
+</div>
+
+<div class="modal fade" id="inviteSuccessModal" tabindex="-1" aria-hidden="true">
+    <div class="modal-dialog">
+        <div class="modal-content">
+            <div class="modal-header">
+                <h5 class="modal-title">Invite Status</h5>
+                <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
+            </div>
+            <div class="modal-body">@inviteSuccessModalMessage</div>
+            <div class="modal-footer">
+                <button type="button" class="btn btn-primary" data-bs-dismiss="modal">OK</button>
+            </div>
+        </div>
+    </div>
+</div>
+
+
+@if (Model.PendingInvites.Any())
+{
+    <hr />
+    <h5>My Pending Invites</h5>
+    <table class="table table-sm">
+        <thead><tr><th>Group</th><th>Email</th><th>Expires</th><th>Action</th></tr></thead>
+        <tbody>
+        @foreach (var invite in Model.PendingInvites)
+        {
+            <tr>
+                <td>@invite.GroupName</td>
+                <td>@invite.InviteEmail</td>
+                <td>@invite.ExpiresAt.ToLocalTime().ToString("yyyy-MM-dd HH:mm")</td>
+                <td>
+                    <form asp-action="AcceptInviteConfirmed" method="post" class="d-inline">
+                        @Html.AntiForgeryToken()
+                        <input type="hidden" name="token" value="@invite.Token" />
+                        <input type="hidden" name="accept" value="true" />
+                        <button type="submit" class="btn btn-sm btn-success">Accept</button>
+                    </form>
+                    <form asp-action="AcceptInviteConfirmed" method="post" class="d-inline ms-1">
+                        @Html.AntiForgeryToken()
+                        <input type="hidden" name="token" value="@invite.Token" />
+                        <input type="hidden" name="accept" value="false" />
+                        <button type="submit" class="btn btn-sm btn-outline-secondary">Decline</button>
+                    </form>
+                </td>
+            </tr>
+        }
+        </tbody>
+    </table>
+    @if (Model.PendingTotalPages > 1)
+    {
+        <nav aria-label="Pending invite pages">
+            <ul class="pagination justify-content-center">
+                @for (var i = 1; i <= Model.PendingTotalPages; i++)
+                {
+                    <li class="page-item @(i == Model.PendingPageNumber ? "active" : string.Empty)">
+                        <a class="page-link" asp-action="Index" asp-route-pendingPage="@i" asp-route-groupsPage="@Model.GroupsPageNumber">@i</a>
+                    </li>
+                }
+            </ul>
+        </nav>
+    }
+}
+
+<hr />
+<h5>My Groups</h5>
+<table class="table table-striped">
+    <thead><tr><th>No</th><th>Name</th><th>Lead</th><th>Members</th><th>Action</th></tr></thead>
+    <tbody>
+    @if (Model.Groups.Any())
+    {
+        @for (var index = 0; index < Model.Groups.Count; index++)
+        {
+            var group = Model.Groups[index];
+            <tr class="group-row" data-href='@Url.Action("Detail", "Group", new { id = group.Id })'>
+                <td>@(index + 1)</td>
+                <td>@group.Name</td>
+                <td>@group.LeadUsername</td>
+                <td>@string.Join(", ", group.Members)</td>
+                <td>
+                    @if (group.IsCurrentUserLead)
+                    {
+                        <button type="button"
+                                class="btn btn-sm btn-outline-danger js-confirm-group-delete"
+                                data-group-id="@group.Id"
+                                data-group-name="@group.Name"
+                                data-bs-toggle="modal"
+                                data-bs-target="#deleteGroupModal">
+                            Delete
+                        </button>
+                    }
+                </td>
+            </tr>
+        }
+    }
+    else
+    {
+        <tr>
+            <td colspan="5" class="text-center text-muted">Not involved in any group yet.</td>
+        </tr>
+    }
+    </tbody>
+</table>
+@if (Model.GroupsTotalPages > 1)
+{
+    <nav aria-label="Group pages">
+        <ul class="pagination justify-content-center">
+            @for (var i = 1; i <= Model.GroupsTotalPages; i++)
+            {
+                <li class="page-item @(i == Model.GroupsPageNumber ? "active" : string.Empty)">
+                    <a class="page-link" asp-action="Index" asp-route-groupsPage="@i" asp-route-pendingPage="@Model.PendingPageNumber">@i</a>
+                </li>
+            }
+        </ul>
+    </nav>
+}
+
+<div class="modal fade" id="deleteGroupModal" tabindex="-1" aria-hidden="true">
+    <div class="modal-dialog">
+        <div class="modal-content">
+            <div class="modal-header">
+                <h5 class="modal-title">Confirm Delete Group</h5>
+                <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
+            </div>
+            <div class="modal-body">
+                Are you sure you want to delete group <strong id="deleteGroupName"></strong>?
+            </div>
+            <div class="modal-footer">
+                <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Cancel</button>
+                <form id="deleteGroupForm" asp-action="Delete" method="post" class="d-inline">
+                    @Html.AntiForgeryToken()
+                    <input id="deleteGroupId" type="hidden" name="id" value="" />
+                    <button class="btn btn-danger" type="submit">Confirm Delete</button>
+                </form>
+            </div>
+        </div>
+    </div>
+</div>
+
+
+<style>
+    .group-row {
+        cursor: pointer;
+    }
+
+    .group-row:hover {
+        background-color: #f8f9fa;
+    }
+</style>
+
+@section Scripts {
+<script>
+(() => {
+    const buttons = document.querySelectorAll('.js-confirm-group-delete');
+    const idInput = document.getElementById('deleteGroupId');
+    const nameContainer = document.getElementById('deleteGroupName');
+
+    buttons.forEach(btn => {
+        btn.addEventListener('click', () => {
+            idInput.value = btn.getAttribute('data-group-id') || '';
+            nameContainer.textContent = btn.getAttribute('data-group-name') || '';
+        });
+    });
+
+    const groupRows = document.querySelectorAll('.group-row');
+    groupRows.forEach(row => {
+        row.addEventListener('click', (event) => {
+            if (event.target.closest('button, a, form, input, select, textarea, label')) {
+                return;
+            }
+
+            const targetUrl = row.getAttribute('data-href');
+            if (targetUrl) {
+                window.location.href = targetUrl;
+            }
+        });
+    });
+
+    const setupEmailCollector = ({ inputId, buttonId, previewId, hiddenId, feedbackId }) => {
+        const input = document.getElementById(inputId);
+        const button = document.getElementById(buttonId);
+        const preview = document.getElementById(previewId);
+        const hidden = document.getElementById(hiddenId);
+        const feedback = document.getElementById(feedbackId);
+        const emails = [];
+
+        const render = () => {
+            preview.textContent = emails.join(', ');
+            hidden.value = emails.join(',');
+        };
+
+        const setFeedback = (message, isError) => {
+            feedback.textContent = message;
+            feedback.classList.remove('text-danger', 'text-success');
+            feedback.classList.add(isError ? 'text-danger' : 'text-success');
+        };
+
+        const tryAddEmail = async () => {
+            const rawValue = (input.value || '').trim();
+            if (!rawValue) {
+                setFeedback('Please enter an email.', true);
+                return;
+            }
+
+            try {
+                const response = await fetch(`/Group/CheckInviteEmail?email=${encodeURIComponent(rawValue)}`);
+                if (!response.ok) {
+                    setFeedback('Unable to validate email right now.', true);
+                    return;
+                }
+
+                const result = await response.json();
+                if (!result.found) {
+                    setFeedback(result.message || 'User not found.', true);
+                    return;
+                }
+
+                if (emails.includes(result.email)) {
+                    setFeedback('Email already added.', true);
+                    return;
+                }
+
+                emails.push(result.email);
+                render();
+                setFeedback(`${result.email} added.`, false);
+                input.value = '';
+                input.focus();
+            } catch {
+                setFeedback('Unable to validate email right now.', true);
+            }
+        };
+
+        button.addEventListener('click', () => {
+            void tryAddEmail();
+        });
+
+        input.addEventListener('keydown', (event) => {
+            if (event.key === 'Enter') {
+                event.preventDefault();
+                void tryAddEmail();
+            }
+        });
+    };
+
+    setupEmailCollector({
+        inputId: 'createInviteInput',
+        buttonId: 'createInviteAddBtn',
+        previewId: 'createInvitePreview',
+        hiddenId: 'createInviteEmails',
+        feedbackId: 'createInviteFeedback'
+    });
+
+    setupEmailCollector({
+        inputId: 'inviteInput',
+        buttonId: 'inviteAddBtn',
+        previewId: 'invitePreview',
+        hiddenId: 'inviteEmails',
+        feedbackId: 'inviteFeedback'
+    });
+
+    const inviteMessage = @Html.Raw(System.Text.Json.JsonSerializer.Serialize(inviteSuccessModalMessage));
+    if (inviteMessage) {
+        const modalElement = document.getElementById('inviteSuccessModal');
+        if (modalElement && window.bootstrap?.Modal) {
+            window.bootstrap.Modal.getOrCreateInstance(modalElement).show();
+        }
+    }
+})();
+</script>
+}

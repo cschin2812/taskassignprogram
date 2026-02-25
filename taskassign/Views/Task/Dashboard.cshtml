@@ -1,0 +1,128 @@
+@model DashboardViewModel
+@{
+    ViewData["Title"] = "Dashboard";
+    var leadGroupIds = ViewBag.LeadGroupIds as HashSet<int> ?? new HashSet<int>();
+    var currentUsername = ViewBag.CurrentUsername as string ?? User.Identity?.Name ?? string.Empty;
+}
+
+<h2>Dashboard</h2>
+<div class="row g-3 mb-4">
+    <div class="col-md-2"><div class="card"><div class="card-body"><h6>Total Tasks</h6><h3>@Model.TotalTasks</h3></div></div></div>
+    <div class="col-md-2"><div class="card"><div class="card-body"><h6>Overdue</h6><h3>@Model.OverdueTasks</h3></div></div></div>
+    <div class="col-md-2"><div class="card"><div class="card-body"><h6>High Priority</h6><h3>@Model.HighPriorityTasks</h3></div></div></div>
+    <div class="col-md-2"><div class="card"><div class="card-body"><h6>Medium Priority</h6><h3>@Model.MediumPriorityTasks</h3></div></div></div>
+    <div class="col-md-2"><div class="card"><div class="card-body"><h6>Low Priority</h6><h3>@Model.LowPriorityTasks</h3></div></div></div>
+    <div class="col-md-2"><div class="card"><div class="card-body"><h6>My Tasks</h6><h3>@Model.MyTasks</h3></div></div></div>
+</div>
+
+<div class="d-flex justify-content-between align-items-center mb-3">
+    <h5 class="mb-0">Tasks in @Model.ScopeLabel</h5>
+    @if ((ViewBag.CanManageTasks as bool?) == true)
+    {
+        <a asp-action="Index" class="btn btn-primary">Manage Tasks</a>
+    }
+</div>
+
+<table class="table table-striped table-fixed" id="dashboardTaskTable">
+    <colgroup>
+        <col class="col-title" />
+        <col class="col-assignee" />
+        <col class="col-status" />
+        <col class="col-priority" />
+        <col class="col-due" />
+        <col class="col-duein" />
+        <col class="col-action" />
+    </colgroup>
+    <thead>
+        <tr>
+            <th>Title</th>
+            <th>Assignee</th>
+            <th>Status</th>
+            <th>Priority</th>
+            <th>Due</th>
+            <th>Due In</th>
+            <th>Action</th>
+        </tr>
+    </thead>
+    <tbody>
+    @if (Model.Tasks.Any())
+    {
+        @foreach (var task in Model.Tasks)
+        {
+            <tr>
+                <td class="task-title-cell"><strong>@task.Title</strong><div class="small text-muted task-description-ellipsis">@task.Description</div></td>
+                <td>@task.AssignedTo</td>
+                <td>@task.Status</td>
+                <td><span class="fw-semibold @task.PriorityClass">@task.Priority</span></td>
+                <td>@task.DueDate.ToString("yyyy-MM-dd")</td>
+                <td>
+                    @if (task.Status != taskassign.Models.TaskStatus.Completed && task.Status != taskassign.Models.TaskStatus.Closed)
+                    {
+                        <span class="fw-semibold @task.DueDateStatusClass">@task.DueDateStatusText</span>
+                    }
+                </td>
+                <td>
+                    @if (leadGroupIds.Contains(task.GroupId) || string.Equals(task.AssignedTo, currentUsername, StringComparison.OrdinalIgnoreCase))
+                    {
+                        <a asp-action="Edit" asp-route-id="@task.Id" class="btn btn-sm btn-outline-primary">Edit</a>
+                    }
+                </td>
+            </tr>
+        }
+    }
+    else
+    {
+        <tr>
+            <td colspan="7" class="text-center text-muted">No data found.</td>
+        </tr>
+    }
+    </tbody>
+</table>
+
+@if (Model.TotalPages > 1)
+{
+    <nav aria-label="Dashboard task pages">
+        <ul class="pagination justify-content-center">
+            @for (var i = 1; i <= Model.TotalPages; i++)
+            {
+                <li class="page-item @(i == Model.PageNumber ? "active" : string.Empty)">
+                    <a class="page-link" asp-action="Dashboard" asp-route-page="@i">@i</a>
+                </li>
+            }
+        </ul>
+    </nav>
+}
+
+<style>
+    #dashboardTaskTable.table-fixed {
+        table-layout: fixed;
+        width: 100%;
+    }
+
+    #dashboardTaskTable .col-title { width: 36%; }
+    #dashboardTaskTable .col-assignee { width: 12%; }
+    #dashboardTaskTable .col-status { width: 9%; }
+    #dashboardTaskTable .col-priority { width: 9%; }
+    #dashboardTaskTable .col-due { width: 10%; }
+    #dashboardTaskTable .col-duein { width: 12%; }
+    #dashboardTaskTable .col-action { width: 12%; }
+
+    #dashboardTaskTable td,
+    #dashboardTaskTable th {
+        word-wrap: break-word;
+        overflow-wrap: anywhere;
+        vertical-align: top;
+    }
+
+    #dashboardTaskTable .task-description-ellipsis {
+        display: -webkit-box;
+        -webkit-line-clamp: 2;
+        -webkit-box-orient: vertical;
+        overflow: hidden;
+        text-overflow: ellipsis;
+        line-height: 1.35;
+        max-height: calc(1.35em * 2);
+    }
+</style>
+
+<a asp-action="Board" class="btn btn-outline-secondary">Board View</a>
